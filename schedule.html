@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محلل جداول المعلمين الذكي - جداول مفردة</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Cairo) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-break-inside { page-break-inside: avoid; }
+            .print-card { 
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                margin-bottom: 2rem !important;
+                page-break-after: always;
+            }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="bg-brand-500 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid me-1 fa-file-invoice-dollar text-xl"></i>
+                    <i class="fa-solid fa-graduation-cap text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">مُحلل جداول المعلمين الذكي</h1>
+                    <p class="text-xs text-slate-400">استخراج وتوليد جداول أسبوعية مفردة لكل معلم</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 space-x-reverse">
+                <button onclick="openScanModal()" class="bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>قراءة صورة جديد بالذكاء الاصطناعي</span>
+                </button>
+                <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold px-3 py-2 rounded-xl border border-slate-700 transition flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i>
+                    <span class="hidden md:inline">طباعة الكل</span>
+                </button>
+                <button onclick="exportToCSV()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold px-3 py-2 rounded-xl transition flex items-center gap-2">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span class="hidden md:inline">تصدير Excel</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Stats Overview Cards -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 no-print">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500">إجمالي المعلمين</p>
+                    <p class="text-2xl font-bold text-slate-800 mt-1" id="stat-teacher-count">18</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500">إجمالي الحصص بالمدرسة</p>
+                    <p class="text-2xl font-bold text-slate-800 mt-1" id="stat-total-lessons">210</p>
+                </div>
+                <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500">أعلى نصاب أسبوعي</p>
+                    <p class="text-lg font-bold text-emerald-600 mt-1" id="stat-max-teacher">مريم (17 حصة)</p>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500">عدد الشعب الدراسية</p>
+                    <p class="text-2xl font-bold text-slate-800 mt-1">7 شعب</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-school"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filter & Search Controls -->
+        <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-8 no-print flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="relative w-full md:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="filterTeachers()" placeholder="بحث باسم المعلم، المادة، أو الصف..." 
+                    class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+            </div>
+
+            <div class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">تصفية حسب النصاب:</span>
+                <button onclick="filterByQuota('all')" class="quota-btn active px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">الكل</button>
+                <button onclick="filterByQuota('high')" class="quota-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">عالي (14+)</button>
+                <button onclick="filterByQuota('medium')" class="quota-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">متوسط (8-13)</button>
+                <button onclick="filterByQuota('low')" class="quota-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">خفيف (أقل من 8)</button>
+            </div>
+        </section>
+
+        <!-- Teacher Schedules Container -->
+        <section id="teachersGrid" class="grid grid-cols-1 gap-8">
+            <!-- Dynamic Teacher Schedule Cards generated by JS -->
+        </section>
+
+    </main>
+
+    <!-- AI Scan Modal -->
+    <div id="scanModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                        <i class="fa-solid fa-brain text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">قراءة جدول جديد بالذكاء الاصطناعي (Gemini Vision)</h3>
+                        <p class="text-xs text-slate-400">حمل صورة الجدول ليتم تفكيكها إلى جداول مفردة لكل معلم تلقائياً</p>
+                    </div>
+                </div>
+                <button onclick="closeScanModal()" class="text-slate-400 hover:text-white p-2 rounded-lg text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5">
+                <!-- Drop Zone -->
+                <div id="dropZone" onclick="document.getElementById('fileInput').click()" 
+                    class="border-2 border-dashed border-slate-300 hover:border-brand-500 bg-slate-50 hover:bg-slate-100/80 rounded-2xl p-8 text-center cursor-pointer transition flex flex-col items-center justify-center gap-3">
+                    <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                    <div class="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-brand-600 text-2xl">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-700 text-sm">اضغط هنا لرفع صورة الجدول المدرسي</p>
+                        <p class="text-xs text-slate-400 mt-1">يدعم ملفات JPG, PNG, WEBP</p>
+                    </div>
+                </div>
+
+                <!-- Preview Box -->
+                <div id="imagePreviewContainer" class="hidden space-y-3">
+                    <p class="text-xs font-bold text-slate-600">معاينة الصورة المحددة:</p>
+                    <div class="relative rounded-xl overflow-hidden border border-slate-200 max-h-56 bg-slate-100 flex items-center justify-center">
+                        <img id="imagePreview" class="max-h-52 object-contain" src="" alt="معاينة الجدول">
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="aiLoading" class="hidden p-6 bg-slate-900 text-white rounded-2xl text-center space-y-3">
+                    <div class="inline-block animate-spin text-brand-400 text-3xl">
+                        <i class="fa-solid fa-circle-notch"></i>
+                    </div>
+                    <p class="font-bold text-sm">جاري قراءة وتحليل صورة الجدول بواسطة محرك Gemini...</p>
+                    <p class="text-xs text-slate-400">يتم استخراج أرقام الدروس والأيام وحصص كل معلم، يرجى الانتظار ثوانٍ معدودة.</p>
+                </div>
+
+                <!-- API Key -->
+                <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed space-y-2">
+                    <div class="flex items-start gap-2">
+                        <i class="fa-solid fa-key text-amber-600 mt-0.5"></i>
+                        <div>
+                            <strong>مفتاح Gemini API:</strong> مجاني من <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="underline font-bold">aistudio.google.com/apikey</a>. يُحفظ على جهازك فقط ولا يُرسل إلا إلى Google.
+                        </div>
+                    </div>
+                    <input id="apiKeyInput" type="password" dir="ltr" placeholder="AIza..." autocomplete="off"
+                        class="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-slate-700 text-xs outline-none focus:border-brand-500" oninput="saveApiKey()">
+                    <label class="flex items-center gap-2 text-[11px] text-amber-700">
+                        النموذج:
+                        <select id="modelSelect" dir="ltr" class="px-2 py-1 rounded-lg border border-amber-300 bg-white text-xs" onchange="saveApiKey()">
+                            <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <button onclick="closeScanModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-xl text-xs font-bold transition">إلغاء</button>
+                <button id="processBtn" onclick="processScheduleImage()" disabled class="px-5 py-2.5 bg-brand-600 disabled:opacity-50 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-microchip"></i>
+                    <span>بدء التحليل والاستخراج</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default pre-loaded complete schedule data extracted from the current timetable
+        let teachersData = [
+            {
+                id: 1,
+                name: "أحمد حسن",
+                subjects: ["اللغة العربية"],
+                classes: ["الثالث", "الخامس"],
+                totalLessons: 14,
+                schedule: {
+                    "الأحد": { 1: { class: "الثالث", subject: "عربي" }, 5: { class: "الثالث", subject: "عربي" }, 6: { class: "الخامس", subject: "عربي" } },
+                    "الاثنين": { 1: { class: "الثالث", subject: "عربي" }, 6: { class: "الخامس", subject: "عربي" } },
+                    "الثلاثاء": { 1: { class: "الخامس", subject: "عربي" }, 4: { class: "الثالث", subject: "عربي" } },
+                    "الأربعاء": { 6: { class: "الثالث", subject: "عربي" } },
+                    "الخميس": { 1: { class: "الخامس", subject: "عربي" }, 2: { class: "الثالث", subject: "عربي" }, 3: { class: "الثالث", subject: "عربي" } }
+                }
+            },
+            {
+                id: 2,
+                name: "أحمد ص",
+                subjects: ["اللغة العربية", "العلوم", "التربية الرياضية"],
+                classes: ["الثالث", "الرابع (أ)", "السادس"],
+                totalLessons: 14,
+                schedule: {
+                    "الأحد": { 1: { class: "السادس", subject: "عربي" }, 2: { class: "الثالث", subject: "رياضة" }, 6: { class: "الرابع أ", subject: "علوم" } },
+                    "الاثنين": {},
+                    "الثلاثاء": { 3: { class: "الرابع أ", subject: "علوم" }, 4: { class: "السادس", subject: "عربي" }, 6: { class: "السادس", subject: "عربي" } },
+                    "الأربعاء": { 1: { class: "الرابع أ", subject: "عربي" }, 3: { class: "الثالث", subject: "رياضة" }, 4: { class: "الرابع أ", subject: "علوم" }, 5: { class: "السادس", subject: "عربي" } },
+                    "الخميس": { 1: { class: "الثالث", subject: "رياضة" }, 4: { class: "الرابع أ", subject: "عربي" }, 6: { class: "السادس", subject: "عربي" } }
+                }
+            },
+            {
+                id: 3,
+                name: "أعلام",
+                subjects: ["التربية الرياضية"],
+                classes: ["الأول"],
+                totalLessons: 2,
+                schedule: {
+                    "الأحد": {},
+                    "الاثنين": { 1: { class: "الأول", subject: "رياضة" } },
+                    "الثلاثاء": {},
+                    "الأربعاء": { 6: { class: "الأول", subject: "رياضة" } },
+                    "الخميس": {}
+                }
+            },
+            {
+                id: 4,
+                name: "بتول",
+                subjects: ["العلوم", "التربية الإسلامية", "التربية الأخلاقية"],
+                classes: ["الأول", "الثاني", "الخامس"],
+                totalLessons: 12,
+                schedule: {
+                    "الأحد": { 3: { class: "الخامس", subject: "إسلامية" }, 5: { class: "الأول", subject: "علوم" }, 6: { class: "الأول", subject: "علوم" } },
+                    "الاثنين": { 2: { class: "الخامس", subject: "إسلامية" }, 4: { class: "الأول", subject: "علوم" } },
+                    "الثلاثاء": { 2: { class: "الأول", subject: "علوم" }, 4: { class: "الثاني", subject: "الأخلاقية" } },
+                    "الأربعاء": { 2: { class: "الثاني", subject: "إسلامية" }, 4: { class: "الأول", subject: "علوم" } },
+                    "الخميس": { 2: { class: "الثاني", subject: "إسلامية" }, 6: { class: "الأول", subject: "علوم" } }
+                }
+            },
+            {
+                id: 5,
+                name: "دنيا",
+                subjects: ["اللغة العربية", "التربية الإسلامية", "التربية الأخلاقية"],
+                classes: ["الأول"],
+                totalLessons: 12,
+                schedule: {
+                    "الأحد": { 1: { class: "الأول", subject: "عربي" }, 2: { class: "الأول", subject: "الأخلاقية" }, 4: { class: "الأول", subject: "عربي" } },
+                    "الاثنين": {},
+                    "الثلاثاء": { 1: { class: "الأول", subject: "عربي" }, 3: { class: "الأول", subject: "الأخلاقية" }, 5: { class: "الأول", subject: "إسلامية" }, 6: { class: "الأول", subject: "عربي" } },
+                    "الأربعاء": { 1: { class: "الأول", subject: "إسلامية" }, 2: { class: "الأول", subject: "عربي" } },
+                    "الخميس": { 1: { class: "الأول", subject: "عربي" }, 4: { class: "الأول", subject: "عربي" }, 5: { class: "الأول", subject: "إسلامية" } }
+                }
+            },
+            {
+                id: 6,
+                name: "زينة",
+                subjects: ["الرياضيات", "العلوم"],
+                classes: ["الأول", "الرابع (ب)", "الخامس"],
+                totalLessons: 13,
+                schedule: {
+                    "الأحد": { 1: { class: "الرابع ب", subject: "علوم" }, 2: { class: "الخامس", subject: "علوم" } },
+                    "الاثنين": { 2: { class: "الأول", subject: "رياضيات" }, 3: { class: "الرابع ب", subject: "علوم" }, 6: { class: "الأول", subject: "رياضيات" } },
+                    "الثلاثاء": { 3: { class: "الخامس", subject: "علوم" }, 4: { class: "الأول", subject: "رياضيات" }, 5: { class: "الرابع ب", subject: "علوم" } },
+                    "الأربعاء": { 3: { class: "الأول", subject: "رياضيات" }, 5: { class: "الأول", subject: "رياضيات" }, 6: { class: "الرابع ب", subject: "علوم" } },
+                    "الخميس": { 2: { class: "الخامس", subject: "علوم" }, 5: { class: "الخامس", subject: "علوم" } }
+                }
+            },
+            {
+                id: 7,
+                name: "زينب",
+                subjects: ["العلوم", "التربية الفنية"],
+                classes: ["الأول", "الثاني", "الثالث", "الخامس", "السادس"],
+                totalLessons: 12,
+                schedule: {
+                    "الأحد": { 2: { class: "الثاني", subject: "فنية" }, 4: { class: "الثالث", subject: "علوم" } },
+                    "الاثنين": { 3: { class: "الثالث", subject: "علوم" }, 5: { class: "الأول", subject: "فنية" }, 6: { class: "السادس", subject: "فنية" } },
+                    "الثلاثاء": { 2: { class: "الثالث", subject: "علوم" }, 6: { class: "الخامس", subject: "فنية" } },
+                    "الأربعاء": { 1: { class: "الثالث", subject: "فنية" }, 2: { class: "الثالث", subject: "علوم" }, 5: { class: "الثاني", subject: "فنية" } },
+                    "الخميس": { 2: { class: "الأول", subject: "فنية" }, 3: { class: "الخامس", subject: "فنية" } }
+                }
+            },
+            {
+                id: 8,
+                name: "شهد",
+                subjects: ["اللغة العربية"],
+                classes: ["الرابع (أ)"],
+                totalLessons: 5,
+                schedule: {
+                    "الأحد": { 1: { class: "الرابع أ", subject: "عربي" } },
+                    "الاثنين": { 4: { class: "الرابع أ", subject: "عربي" }, 5: { class: "الرابع أ", subject: "عربي" } },
+                    "الثلاثاء": { 2: { class: "الرابع أ", subject: "عربي" }, 6: { class: "الرابع أ", subject: "عربي" } },
+                    "الأربعاء": {},
+                    "الخميس": {}
+                }
+            },
+            {
+                id: 9,
+                name: "شهيد",
+                subjects: ["اللغة العربية", "الرياضيات"],
+                classes: ["الرابع (ب)"],
+                totalLessons: 9,
+                schedule: {
+                    "الأحد": { 3: { class: "الرابع ب", subject: "عربي" }, 4: { class: "الرابع ب", subject: "عربي" } },
+                    "الاثنين": { 2: { class: "الرابع ب", subject: "عربي" } },
+                    "الثلاثاء": { 1: { class: "الرابع ب", subject: "عربي" }, 5: { class: "الرابع ب", subject: "عربي" }, 6: { class: "الرابع ب", subject: "عربي" } },
+                    "الأربعاء": { 2: { class: "الرابع ب", subject: "عربي" } },
+                    "الخميس": { 4: { class: "الرابع ب", subject: "عربي" }, 5: { class: "الرابع ب", subject: "عربي" } }
+                }
+            },
+            {
+                id: 10,
+                name: "عباس",
+                subjects: ["الرياضيات", "التربية الرياضية"],
+                classes: ["الثاني", "الرابع (ب)"],
+                totalLessons: 14,
+                schedule: {
+                    "الأحد": { 1: { class: "الثاني", subject: "رياضيات" }, 2: { class: "الرابع ب", subject: "رياضيات" }, 4: { class: "الثاني", subject: "رياضيات" } },
+                    "الاثنين": { 1: { class: "الرابع ب", subject: "رياضيات" }, 4: { class: "الثاني", subject: "رياضات" }, 6: { class: "الثاني", subject: "رياضة" } },
+                    "الثلاثاء": { 6: { class: "الثاني", subject: "رياضيات" } },
+                    "الأربعاء": { 1: { class: "الثاني", subject: "رياضيات" }, 3: { class: "الرابع ب", subject: "رياضيات" } },
+                    "الخميس": { 1: { class: "الثاني", subject: "رياضيات" }, 3: { class: "الثاني", subject: "رياضة" }, 4: { class: "الرابع ب", subject: "رياضيات" }, 6: { class: "الرابع ب", subject: "رياضيات" } }
+                }
+            },
+            {
+                id: 11,
+                name: "علياء",
+                subjects: ["التربية الإسلامية"],
+                classes: ["الثالث", "الرابع (أ)", "الرابع (ب)", "السادس"],
+                totalLessons: 14,
+                schedule: {
+                    "الأحد": { 2: { class: "الرابع أ", subject: "إسلامية" }, 3: { class: "الثالث", subject: "إسلامية" } },
+                    "الاثنين": { 2: { class: "الرابع أ", subject: "إسلامية" }, 3: { class: "الثالث", subject: "إسلامية" }, 5: { class: "الرابع ب", subject: "إسلامية" }, 6: { class: "السادس", subject: "إسلامية" } },
+                    "الثلاثاء": { 1: { class: "الثالث", subject: "إسلامية" }, 2: { class: "الرابع ب", subject: "إسلامية" } },
+                    "الأربعاء": { 1: { class: "السادس", subject: "إسلامية" }, 3: { class: "الرابع ب", subject: "إسلامية" }, 4: { class: "الثالث", subject: "إسلامية" } },
+                    "الخميس": { 1: { class: "الرابع أ", subject: "إسلامية" }, 3: { class: "السادس", subject: "إسلامية" }, 5: { class: "السادس", subject: "إسلامية" } }
+                }
+            },
+            {
+                id: 12,
+                name: "ماجدة",
+                subjects: ["اللغة الإنكليزية"],
+                classes: ["الأول", "الرابع (أ)", "الرابع (ب)", "الخامس"],
+                totalLessons: 11,
+                schedule: {
+                    "الأحد": { 3: { class: "الأول", subject: "إنكليزي" }, 5: { class: "الرابع أ", subject: "إنكليزي" }, 6: { class: "الرابع ب", subject: "إنكليزي" } },
+                    "الاثنين": { 3: { class: "الأول", subject: "إنكليزي" }, 5: { class: "الخامس", subject: "إنكليزي" } },
+                    "الثلاثاء": { 4: { class: "الخامس", subject: "إنكليزي" }, 5: { class: "الرابع أ", subject: "إنكليزي" } },
+                    "الأربعاء": { 2: { class: "الرابع أ", subject: "إنكليزي" }, 3: { class: "الخامس", subject: "إنكليزي" } },
+                    "الخميس": { 3: { class: "الأول", subject: "إنكليزي" }, 4: { class: "الخامس", subject: "إنكليزي" } }
+                }
+            },
+            {
+                id: 13,
+                name: "محمد",
+                subjects: ["الرياضيات", "التربية الرياضية"],
+                classes: ["الثالث", "الرابع (ب)", "السادس"],
+                totalLessons: 13,
+                schedule: {
+                    "الأحد": { 6: { class: "الثالث", subject: "رياضيات" } },
+                    "الاثنين": { 3: { class: "السادس", subject: "رياضيات" }, 4: { class: "الثالث", subject: "رياضيات" }, 5: { class: "الرابع ب", subject: "رياضة" } },
+                    "الثلاثاء": { 2: { class: "السادس", subject: "رياضيات" }, 3: { class: "السادس", subject: "رياضيات" }, 5: { class: "الثالث", subject: "رياضيات" }, 6: { class: "الثالث", subject: "رياضيات" } },
+                    "الأربعاء": { 2: { class: "السادس", subject: "رياضيات" }, 3: { class: "السادس", subject: "رياضيات" }, 4: { class: "الرابع ب", subject: "رياضة" }, 5: { class: "الثالث", subject: "رياضيات" } },
+                    "الخميس": { 4: { class: "الثالث", subject: "رياضيات" } }
+                }
+            },
+            {
+                id: 14,
+                name: "محمد ر ع",
+                subjects: ["العلوم", "التربية الرياضية"],
+                classes: ["الخامس", "السادس"],
+                totalLessons: 8,
+                schedule: {
+                    "الأحد": { 3: { class: "السادس", subject: "علوم" }, 4: { class: "السادس", subject: "رياضة" } },
+                    "الاثنين": { 4: { class: "الخامس", subject: "رياضة" }, 5: { class: "السادس", subject: "علوم" } },
+                    "الثلاثاء": {},
+                    "الأربعاء": { 4: { class: "الخامس", subject: "رياضة" }, 6: { class: "السادس", subject: "علوم" } },
+                    "الخميس": { 1: { class: "السادس", subject: "علوم" }, 2: { class: "السادس", subject: "رياضة" } }
+                }
+            },
+            {
+                id: 15,
+                name: "مريم",
+                subjects: ["الاجتماعيات", "التربية الفنية"],
+                classes: ["الرابع (أ)", "الرابع (ب)", "الخامس", "السادس"],
+                totalLessons: 17,
+                schedule: {
+                    "الأحد": { 3: { class: "الرابع أ", subject: "اجتماعيات" }, 5: { class: "الرابع ب", subject: "اجتماعيات" }, 6: { class: "السادس", subject: "اجتماعيات" } },
+                    "الاثنين": { 1: { class: "الخامس", subject: "اجتماعيات" }, 2: { class: "السادس", subject: "اجتماعيات" }, 3: { class: "الرابع أ", subject: "اجتماعيات" } },
+                    "الثلاثاء": { 2: { class: "الخامس", subject: "اجتماعيات" }, 3: { class: "الرابع ب", subject: "اجتماعيات" }, 5: { class: "السادس", subject: "اجتماعيات" } },
+                    "الأربعاء": { 1: { class: "الخامس", subject: "اجتماعيات" }, 5: { class: "الرابع أ", subject: "فنية" }, 6: { class: "الرابع أ", subject: "فنية" } },
+                    "الخميس": { 2: { class: "الرابع ب", subject: "فنية" }, 3: { class: "الرابع أ", subject: "اجتماعيات" }, 5: { class: "الرابع ب", subject: "فنية" } }
+                }
+            },
+            {
+                id: 16,
+                name: "وديان",
+                subjects: ["اللغة العربية", "العلوم"],
+                classes: ["الثاني"],
+                totalLessons: 14,
+                schedule: {
+                    "الأحد": { 5: { class: "الثاني", subject: "عربي" }, 6: { class: "الثاني", subject: "عربي" } },
+                    "الاثنين": { 1: { class: "الثاني", subject: "علوم" }, 2: { class: "الثاني", subject: "عربي" }, 3: { class: "الثاني", subject: "عربي" }, 5: { class: "الثاني", subject: "علوم" } },
+                    "الثلاثاء": { 1: { class: "الثاني", subject: "عربي" }, 2: { class: "الثاني", subject: "عربي" }, 5: { class: "الثاني", subject: "علوم" } },
+                    "الأربعاء": { 3: { class: "الثاني", subject: "عربي" }, 4: { class: "الثاني", subject: "علوم" }, 6: { class: "الثاني", subject: "عربي" } },
+                    "الخميس": { 4: { class: "الثاني", subject: "علوم" }, 6: { class: "الثاني", subject: "علوم" } }
+                }
+            },
+            {
+                id: 17,
+                name: "ورود",
+                subjects: ["اللغة الإنكليزية"],
+                classes: ["الثاني", "الثالث", "السادس"],
+                totalLessons: 11,
+                schedule: {
+                    "الأحد": { 2: { class: "السادس", subject: "إنكليزي" }, 3: { class: "الثاني", subject: "إنكليزي" } },
+                    "الاثنين": { 2: { class: "السادس", subject: "إنكليزي" }, 5: { class: "الثالث", subject: "إنكليزي" } },
+                    "الثلاثاء": { 1: { class: "السادس", subject: "إنكليزي" }, 3: { class: "الثالث", subject: "إنكليزي" }, 4: { class: "الثاني", subject: "إنكليزي" } },
+                    "الأربعاء": { 4: { class: "السادس", subject: "إنكليزي" } },
+                    "الخميس": { 4: { class: "السادس", subject: "إنكليزي" }, 5: { class: "الثاني", subject: "إنكليزي" }, 6: { class: "الثالث", subject: "إنكليزي" } }
+                }
+            },
+            {
+                id: 18,
+                name: "هدى",
+                subjects: ["الرياضيات", "التربية الرياضية"],
+                classes: ["الرابع (أ)", "الخامس"],
+                totalLessons: 14,
+                schedule: {
+                    "الأحد": { 1: { class: "الخامس", subject: "رياضيات" }, 4: { class: "الرابع أ", subject: "رياضيات" }, 5: { class: "الخامس", subject: "رياضيات" } },
+                    "الاثنين": { 1: { class: "الرابع أ", subject: "رياضيات" }, 3: { class: "الخامس", subject: "رياضيات" }, 6: { class: "الرابع أ", subject: "رياضيات" } },
+                    "الثلاثاء": { 1: { class: "الرابع أ", subject: "رياضيات" }, 4: { class: "الرابع أ", subject: "رياضيات" }, 5: { class: "الخامس", subject: "رياضيات" } },
+                    "الأربعاء": { 2: { class: "الخامس", subject: "رياضيات" }, 3: { class: "الرابع أ", subject: "رياضيات" } },
+                    "الخميس": { 2: { class: "الرابع أ", subject: "رياضيات" }, 5: { class: "الرابع أ", subject: "رياضة" }, 6: { class: "الخامس", subject: "رياضيات" } }
+                }
+            }
+        ];
+
+        const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
+        let selectedFile = null;
+
+        // Initialize App on Load
+        window.onload = function() {
+            renderTeachersGrid(teachersData);
+            updateStats();
+        };
+
+        function renderTeachersGrid(data) {
+            const container = document.getElementById('teachersGrid');
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-12 text-center text-slate-500 border border-slate-200">
+                        <i class="fa-solid fa-user-slash text-4xl mb-3 text-slate-300"></i>
+                        <p class="font-bold">لم يتم العثور على أي معلم مطبق لمعايير البحث</p>
+                    </div>
+                `;
+                return;
+            }
+
+            data.forEach((teacher) => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print-card transition hover:shadow-md";
+                card.id = `teacher-card-${teacher.id}`;
+
+                // Calculate daily totals
+                let dailyCounts = {};
+                days.forEach(day => {
+                    dailyCounts[day] = Object.keys(teacher.schedule[day] || {}).length;
+                });
+
+                let subjectsBadges = teacher.subjects.map(s => `<span class="bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-lg font-semibold">${s}</span>`).join(' ');
+                let classesBadges = teacher.classes.map(c => `<span class="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg font-semibold">${c}</span>`).join(' ');
+
+                let scheduleRowsHtml = days.map(day => {
+                    let daySchedule = teacher.schedule[day] || {};
+                    let lessonsCells = "";
+
+                    for (let lessonNum = 1; lessonNum <= 6; lessonNum++) {
+                        let cellData = daySchedule[lessonNum];
+                        if (cellData) {
+                            lessonsCells += `
+                                <td class="p-2 border border-slate-200 text-center bg-sky-50/70">
+                                    <div class="font-bold text-sky-900 text-sm">${cellData.class}</div>
+                                    <div class="text-[11px] text-sky-700 font-medium">${cellData.subject}</div>
+                                </td>
+                            `;
+                        } else {
+                            lessonsCells += `
+                                <td class="p-2 border border-slate-200 text-center bg-slate-50/40 text-slate-300 font-light text-xs">
+                                    -
+                                </td>
+                            `;
+                        }
+                    }
+
+                    return `
+                        <tr>
+                            <td class="p-2.5 border border-slate-200 bg-slate-100/80 font-bold text-xs text-slate-700 text-center">${day}</td>
+                            ${lessonsCells}
+                            <td class="p-2 border border-slate-200 text-center font-bold text-xs bg-slate-50 ${dailyCounts[day] > 0 ? 'text-brand-600' : 'text-slate-400'}">
+                                ${dailyCounts[day]} حصص
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                card.innerHTML = `
+                    <!-- Teacher Card Header -->
+                    <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 text-white">
+                        <div class="flex items-center space-x-4 space-x-reverse">
+                            <div class="w-12 h-12 rounded-2xl bg-brand-500 text-white font-black text-xl flex items-center justify-center shadow-inner">
+                                ${teacher.name.charAt(0)}
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-3">
+                                    <h2 class="text-lg font-bold">${teacher.name}</h2>
+                                    <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                                        ${teacher.totalLessons} حصة أسبوعياً
+                                    </span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                    ${subjectsBadges}
+                                    <span class="text-slate-500 text-xs">| الصفوف:</span>
+                                    ${classesBadges}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Action Buttons -->
+                        <div class="flex items-center gap-2 no-print self-end md:self-auto">
+                            <button onclick="printSingleTeacher('${teacher.id}')" title="طباعة جدول المعلم" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-print"></i>
+                                <span>طباعة</span>
+                            </button>
+                            <button onclick="copyTeacherSchedule('${teacher.name}')" title="نسخ الجدول" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-copy"></i>
+                                <span>نسخ</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Single Teacher Timetable Grid -->
+                    <div class="p-4 overflow-x-auto">
+                        <table class="w-full text-right border-collapse min-w-[600px]">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 text-xs">
+                                    <th class="p-2.5 border border-slate-200 text-center w-24">اليوم / الدرس</th>
+                                    <th class="p-2.5 border border-slate-200 text-center">الدرس الأول</th>
+                                    <th class="p-2.5 border border-slate-200 text-center">الدرس الثاني</th>
+                                    <th class="p-2.5 border border-slate-200 text-center">الدرس الثالث</th>
+                                    <th class="p-2.5 border border-slate-200 text-center">الدرس الرابع</th>
+                                    <th class="p-2.5 border border-slate-200 text-center">الدرس الخامس</th>
+                                    <th class="p-2.5 border border-slate-200 text-center">الدرس السادس</th>
+                                    <th class="p-2.5 border border-slate-200 text-center w-20">المجموع</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${scheduleRowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function filterTeachers() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const filtered = teachersData.filter(t => {
+                const nameMatch = t.name.toLowerCase().includes(query);
+                const subjectMatch = t.subjects.some(s => s.toLowerCase().includes(query));
+                const classMatch = t.classes.some(c => c.toLowerCase().includes(query));
+                return nameMatch || subjectMatch || classMatch;
+            });
+            renderTeachersGrid(filtered);
+        }
+
+        function filterByQuota(level) {
+            document.querySelectorAll('.quota-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-50', 'text-brand-700', 'border', 'border-brand-200');
+                btn.classList.add('bg-slate-100', 'text-slate-600');
+            });
+            event.target.classList.remove('bg-slate-100', 'text-slate-600');
+            event.target.classList.add('bg-brand-50', 'text-brand-700', 'border', 'border-brand-200');
+
+            let filtered = teachersData;
+            if (level === 'high') filtered = teachersData.filter(t => t.totalLessons >= 14);
+            if (level === 'medium') filtered = teachersData.filter(t => t.totalLessons >= 8 && t.totalLessons < 14);
+            if (level === 'low') filtered = teachersData.filter(t => t.totalLessons < 8);
+
+            renderTeachersGrid(filtered);
+        }
+
+        function updateStats() {
+            document.getElementById('stat-teacher-count').textContent = teachersData.length;
+            const total = teachersData.reduce((acc, t) => acc + t.totalLessons, 0);
+            document.getElementById('stat-total-lessons').textContent = total;
+
+            if (teachersData.length > 0) {
+                const sorted = [...teachersData].sort((a, b) => b.totalLessons - a.totalLessons);
+                document.getElementById('stat-max-teacher').textContent = `${sorted[0].name} (${sorted[0].totalLessons} حصة)`;
+            }
+        }
+
+        function printSingleTeacher(id) {
+            const cards = document.querySelectorAll('.print-card');
+            cards.forEach(card => card.classList.add('no-print'));
+            const target = document.getElementById(`teacher-card-${id}`);
+            if (target) {
+                target.classList.remove('no-print');
+                window.print();
+                cards.forEach(card => card.classList.remove('no-print'));
+            }
+        }
+
+        function copyTeacherSchedule(teacherName) {
+            const teacher = teachersData.find(t => t.name === teacherName);
+            if (!teacher) return;
+
+            let text = `جدول المعلم/ة: ${teacher.name}\nإجمالي الحصص: ${teacher.totalLessons}\nالمواد: ${teacher.subjects.join(', ')}\n\n`;
+            days.forEach(day => {
+                text += `[${day}]: `;
+                let dayEntries = [];
+                for (let i = 1; i <= 6; i++) {
+                    if (teacher.schedule[day] && teacher.schedule[day][i]) {
+                        dayEntries.push(`الدرس ${i}: ${teacher.schedule[day][i].class} (${teacher.schedule[day][i].subject})`);
+                    }
+                }
+                text += dayEntries.length > 0 ? dayEntries.join(' | ') : "لا يوجد حصص";
+                text += "\n";
+            });
+
+            // Copy to clipboard
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            alert(`تم نسخ جدول المعلم (${teacher.name}) بنجاح!`);
+        }
+
+        function exportToCSV() {
+            let csvContent = "\uFEFFاسم المعلم,المواد,إجمالي الحصص,اليوم,الدرس الأول,الدرس الثاني,الدرس الثالث,الدرس الرابع,الدرس الخامس,الدرس السادس\n";
+
+            teachersData.forEach(t => {
+                days.forEach(d => {
+                    let l1 = t.schedule[d]?.[1] ? `${t.schedule[d][1].class} - ${t.schedule[d][1].subject}` : '-';
+                    let l2 = t.schedule[d]?.[2] ? `${t.schedule[d][2].class} - ${t.schedule[d][2].subject}` : '-';
+                    let l3 = t.schedule[d]?.[3] ? `${t.schedule[d][3].class} - ${t.schedule[d][3].subject}` : '-';
+                    let l4 = t.schedule[d]?.[4] ? `${t.schedule[d][4].class} - ${t.schedule[d][4].subject}` : '-';
+                    let l5 = t.schedule[d]?.[5] ? `${t.schedule[d][5].class} - ${t.schedule[d][5].subject}` : '-';
+                    let l6 = t.schedule[d]?.[6] ? `${t.schedule[d][6].class} - ${t.schedule[d][6].subject}` : '-';
+
+                    csvContent += `"${t.name}","${t.subjects.join('/')}",${t.totalLessons},"${d}","${l1}","${l2}","${l3}","${l4}","${l5}","${l6}"\n`;
+                });
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `جداول_المعلمين_المفردة_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function openScanModal() {
+            document.getElementById('scanModal').classList.remove('hidden');
+        }
+
+        function closeScanModal() {
+            document.getElementById('scanModal').classList.add('hidden');
+            document.getElementById('aiLoading').classList.add('hidden');
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('processBtn').disabled = true;
+            selectedFile = null;
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                document.getElementById('processBtn').disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveApiKey() {
+            try {
+                localStorage.setItem('gemini_api_key', document.getElementById('apiKeyInput').value.trim());
+                localStorage.setItem('gemini_model', document.getElementById('modelSelect').value);
+            } catch (e) {}
+        }
+
+        function loadApiKey() {
+            try {
+                const k = localStorage.getItem('gemini_api_key');
+                const m = localStorage.getItem('gemini_model');
+                if (k) document.getElementById('apiKeyInput').value = k;
+                if (m) document.getElementById('modelSelect').value = m;
+            } catch (e) {}
+        }
+        window.addEventListener('DOMContentLoaded', loadApiKey);
+
+        async function processScheduleImage() {
+            if (!selectedFile) return;
+
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const model = document.getElementById('modelSelect').value;
+            if (!apiKey) {
+                alert("أدخل مفتاح Gemini API أولاً (مجاني من aistudio.google.com/apikey).");
+                document.getElementById('apiKeyInput').focus();
+                return;
+            }
+
+            const aiLoading = document.getElementById('aiLoading');
+            const processBtn = document.getElementById('processBtn');
+
+            aiLoading.classList.remove('hidden');
+            processBtn.disabled = true;
+
+            try {
+                // Convert image file to base64
+                const base64Data = await fileToBase64(selectedFile);
+                const pureBase64 = base64Data.split(',')[1];
+                const mimeType = selectedFile.type || "image/jpeg";
+
+                // System Instruction and User Prompt for JSON extraction
+                const systemPrompt = `أنت نظام ذكاء اصطناعي متخصص في تحليل وجرف جداول الحصص المدرسية العربية بدقة فائقة.
+قم بتحليل صورة جدول الصفوف والدروس بدقة، ثم استخرج المعلمين وجدول كل معلم على حدة بأسلوب منظّم وحساب إجمالي الحصص لكل معلم.`;
+
+                const userQuery = `اقرأ صورة هذا الجدول المدرسي واستخرج جداول كافة المعلمين والمعلمات بصيغة JSON فقط متضمنة الهيكل التالي بالضبط دون أي نص خارجي:
+{
+  "teachers": [
+    {
+      "id": 1,
+      "name": "اسم المعلم",
+      "subjects": ["المادة"],
+      "classes": ["الصفوف"],
+      "totalLessons": 14,
+      "schedule": {
+        "الأحد": { "1": { "class": "الثالث", "subject": "عربي" } },
+        "الاثنين": {},
+        "الثلاثاء": {},
+        "الأربعاء": {},
+        "الخميس": {}
+      }
+    }
+  ]
+}`;
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+                const payload = {
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [
+                                { text: userQuery },
+                                {
+                                    inlineData: {
+                                        mimeType: mimeType,
+                                        data: pureBase64
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    generationConfig: {
+                        responseMimeType: "application/json"
+                    }
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let detail = '';
+                    try { detail = (await response.json()).error?.message || ''; } catch (e) {}
+                    throw new Error(`خطأ في طلب الذكاء الاصطناعي (${response.status}): ${detail}`);
+                }
+
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (jsonText) {
+                    const parsedData = JSON.parse(jsonText.replace(/```json|```/g, '').trim());
+                    if (parsedData.teachers && parsedData.teachers.length > 0) {
+                        teachersData = parsedData.teachers;
+                        renderTeachersGrid(teachersData);
+                        updateStats();
+                        closeScanModal();
+                        alert("تم تحليل الجدول بنجاح وتوليد جداول المعلمين المفردة!");
+                    } else {
+                        alert("تعذر العثور على جداول معلمين بالصورة. يرجى التأكد من وضوح جدول المدرسة.");
+                    }
+                } else {
+                    alert("لم يتم استرجاع استجابة من الذكاء الاصطناعي.");
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ أثناء قراءة الصورة: " + err.message);
+            } finally {
+                aiLoading.classList.add('hidden');
+                processBtn.disabled = false;
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+    </script>
+</body>
+</html>
