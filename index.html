@@ -834,11 +834,20 @@
                     }
                 };
 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                    body: JSON.stringify(payload)
-                });
+                let response;
+                for (let attempt = 1; attempt <= 4; attempt++) {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+                        body: JSON.stringify(payload)
+                    });
+                    // إعادة المحاولة تلقائياً عند الضغط العالي على الخادم
+                    if ([429, 500, 503].includes(response.status) && attempt < 4) {
+                        await new Promise(r => setTimeout(r, attempt * 4000));
+                        continue;
+                    }
+                    break;
+                }
 
                 if (!response.ok) {
                     let detail = '';
